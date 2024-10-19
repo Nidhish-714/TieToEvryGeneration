@@ -6,12 +6,14 @@ from sentence_transformers import SentenceTransformer, util
 from pymongo.mongo_client import MongoClient
 from pinecone import Pinecone
 from dotenv import load_dotenv
+from flask_cors import CORS
 
 # Load environment variables
 load_dotenv()
 
 # Initialize Flask app
 app = Flask(__name__)
+CORS(app)
 
 # Initialize Groq chat with the model
 groq_api_key = "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"

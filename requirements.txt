@@ -90,3 +90,4 @@ waitress==3.0.0
 Werkzeug==3.0.4
 win32-setctime==1.1.0
 yarl==1.15.5
+flask-cors

@@ -14,8 +14,8 @@ load_dotenv()
 app = Flask(__name__)
 
 # Initialize Groq chat with the model
-groq_api_key = "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"
-groq_chat = ChatGroq(groq_api_key=groq_api_key, model_name='mixtral-8x7b-32768')
+groq_api_key = "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"
+groq_chat = ChatGroq(groq_api_key=groq_api_key, model_name='llama-3.1-70b-versatile')
 
 # MongoDB connection
 uri = "mongodb+srv://Nidhish:Nidhish@coephackathon.pbuvv.mongodb.net/?retryWrites=true&w=majority&appName=CoepHackathon"
@@ -132,19 +132,70 @@ def fetch_code_information():
 
     # Check if no suitable information was found
     if combined_information == "":
-        return jsonify({"error": "Not a suitable query."})
+        try:
+            # Prepare prompt for Groq
+            promptT = (
+                f"Query is {query}. You are a helpful assistant designed to assist new developers in retrieving code snippets that adhere , if provided message is related to coding then say this code is not present in Organization repositories"
+                f"to the company's custom technical instructions and practices. Whenever someone asks you for help or any natural language "
+                f"query, explain that you are a bot built for fetching relevant code implementations based on the company's standards. "
+                f"Your job is to search through the company's various source code repositories and provide code snippets that match their "
+                f"technical guidelines. Respond politely and always offer clear, concise, and accurate code examples that follow company guidelines."
+            )
+
+            result = groq_chat.invoke(promptT)
+
+            if hasattr(result, 'content'):
+                clean_result = result.content.replace("\\n", "\n")
+                # Generate Markdown for clean result
+                promptTMd = f"Convert the following analysis results into well-structured Markdown format. Ensure proper formatting for readability and use bullet points where appropriate. If any lists or steps are mentioned, use ordered or unordered lists as necessary. Ensure headings, subheadings, and code blocks (if applicable) are properly formatted so that the output displays cleanly when pasted into a Markdown viewer. Here is the content to format: {clean_result}"
+
+                Mdresult = groq_chat.invoke(promptTMd)
+                
+                return jsonify({
+                    "message": Mdresult.content if hasattr(Mdresult, 'content') else str(Mdresult)
+                })
+
+            else:
+                clean_result = str(result).replace("\\n", "\n")
+                return jsonify({
+                    "message": clean_result
+                })
+        
+        except Exception as e:
+            # Instead of appending to result, create an error message string
+            error_message = f"Couldn't find such code snippets regarding to your query:"
+
+            promptTMd = f"Convert the following analysis results into well-structured Markdown format. Ensure proper formatting for readability and use bullet points where appropriate. If any lists or steps are mentioned, use ordered or unordered lists as necessary. Ensure headings, subheadings, and code blocks (if applicable) are properly formatted so that the output displays cleanly when pasted into a Markdown viewer. Here is the content to format: {error_message}"
+
+            Mdresult = groq_chat.invoke(promptTMd)
+
+            return jsonify({
+                "message": Mdresult.content
+            })
 
     # Now, we can safely analyze the code snippets since we know there are results
     analysis_results = analyze_code_snippets([titles[0]], [file_paths[0]])
+
+    # Generate Markdown for the first analysis result
+    promptTMd = f"Convert the following analysis results into well-structured Markdown format. Ensure proper formatting for readability and use bullet points where appropriate. If any lists or steps are mentioned, use ordered or unordered lists as necessary. Ensure headings, subheadings, and code blocks (if applicable) are properly formatted so that the output displays cleanly when pasted into a Markdown viewer. Here is the content to format: {analysis_results}"
+
+    Mdresult = groq_chat.invoke(promptTMd)
+    analy1 = [Mdresult.content if hasattr(Mdresult, 'content') else str(Mdresult)]
+
+    # Perform another analysis
     analysis_results1 = analyze_code_snippets1([titles[0]], [file_paths[0]])
+    promptTMd1 = f"Convert the following analysis results into well-structured Markdown format. Ensure proper formatting for readability and use bullet points where appropriate. If any lists or steps are mentioned, use ordered or unordered lists as necessary. Ensure headings, subheadings, and code blocks (if applicable) are properly formatted so that the output displays cleanly when pasted into a Markdown viewer. Here is the content to format: {analysis_results1}"
+
+    Mdresult = groq_chat.invoke(promptTMd1)
+    analy2 = [Mdresult.content if hasattr(Mdresult, 'content') else str(Mdresult)]
 
     return jsonify({
         "combined_information": combined_information,
         "titles": titles,
         "fullplots": fullplots,
         "file_paths": file_paths,
-        "analysis_results": analysis_results,
-        "analysis_results1": analysis_results1
+        "analysis_results": analy1,
+        "analysis_results1": analy2
     })
 
 if __name__ == '__main__':
